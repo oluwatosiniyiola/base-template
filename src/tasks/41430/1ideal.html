@@ -1,0 +1,244 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Article Visualizer</title>
+    <style>
+      body {
+        font-family: Arial, sans-serif;
+        margin: 0;
+        padding: 20px;
+        max-width: 800px;
+        margin: 0 auto;
+      }
+      textarea {
+        width: 100%;
+        height: 200px;
+        margin-bottom: 20px;
+      }
+      #visualizer {
+        display: flex;
+        flex-direction: column;
+      }
+      canvas {
+        border: 1px solid #ccc;
+        margin-bottom: 20px;
+      }
+      #keywordCloud {
+        text-align: center;
+        margin-bottom: 20px;
+      }
+      #sectionContent {
+        border: 1px solid #ccc;
+        padding: 10px;
+        margin-bottom: 20px;
+      }
+    </style>
+  </head>
+  <body>
+    <h1>Article Visualizer</h1>
+    <textarea
+      id="articleInput"
+      placeholder="Paste your article here..."
+    ></textarea>
+    <button onclick="visualizeArticle()">Visualize</button>
+    <div id="visualizer">
+      <canvas id="flowchart" width="800" height="400"></canvas>
+      <div id="keywordCloud"></div>
+      <div id="sectionContent"></div>
+    </div>
+
+    <script>
+      const positiveWords = [
+        "good",
+        "great",
+        "excellent",
+        "positive",
+        "amazing",
+        "wonderful",
+        "fantastic",
+      ];
+      const negativeWords = [
+        "bad",
+        "poor",
+        "negative",
+        "terrible",
+        "awful",
+        "horrible",
+        "disappointing",
+      ];
+
+      function visualizeArticle() {
+        const article = document.getElementById("articleInput").value;
+        const sections = breakIntoSections(article);
+        drawFlowchart(sections);
+        generateKeywordCloud(sections);
+      }
+
+      function breakIntoSections(article) {
+        const paragraphs = article.split("\n\n");
+        const sections = [];
+        let currentSection = {
+          title: "Introduction",
+          content: "",
+          sentiment: 0,
+          keywords: {},
+        };
+
+        paragraphs.forEach((paragraph, index) => {
+          if (index === 0) {
+            currentSection.content += paragraph;
+          } else if (index === paragraphs.length - 1) {
+            sections.push(currentSection);
+            currentSection = {
+              title: "Conclusion",
+              content: paragraph,
+              sentiment: 0,
+              keywords: {},
+            };
+          } else {
+            if (currentSection.title === "Introduction") {
+              sections.push(currentSection);
+              currentSection = {
+                title: "Body",
+                content: paragraph,
+                sentiment: 0,
+                keywords: {},
+              };
+            } else {
+              currentSection.content += "\n\n" + paragraph;
+            }
+          }
+
+          currentSection.sentiment += calculateSentiment(paragraph);
+          extractKeywords(paragraph, currentSection.keywords);
+        });
+
+        sections.push(currentSection);
+        return sections;
+      }
+
+      function calculateSentiment(text) {
+        const words = text.toLowerCase().match(/\b(\w+)\b/g) || [];
+        let sentiment = 0;
+        words.forEach((word) => {
+          if (positiveWords.includes(word)) sentiment++;
+          if (negativeWords.includes(word)) sentiment--;
+        });
+        return sentiment;
+      }
+
+      function extractKeywords(text, keywords) {
+        const words = text.toLowerCase().match(/\b(\w+)\b/g) || [];
+        words.forEach((word) => {
+          if (word.length > 3) {
+            keywords[word] = (keywords[word] || 0) + 1;
+          }
+        });
+      }
+
+      function drawFlowchart(sections) {
+        const canvas = document.getElementById("flowchart");
+        const ctx = canvas.getContext("2d");
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+        const boxWidth = 150;
+        const boxHeight = 80;
+        const startX = (canvas.width - boxWidth) / 2;
+        const startY = 50;
+        const verticalGap = 100;
+
+        sections.forEach((section, index) => {
+          const x = startX;
+          const y = startY + index * (boxHeight + verticalGap);
+
+          // Draw box with heatmap color based on sentiment
+          ctx.fillStyle = getSentimentColor(section.sentiment);
+          ctx.fillRect(x, y, boxWidth, boxHeight);
+
+          // Draw title
+          ctx.fillStyle = "black";
+          ctx.font = "16px Arial";
+          ctx.fillText(section.title, x + 10, y + 30);
+
+          // Draw arrow
+          if (index < sections.length - 1) {
+            ctx.beginPath();
+            ctx.moveTo(x + boxWidth / 2, y + boxHeight);
+            ctx.lineTo(x + boxWidth / 2, y + boxHeight + verticalGap);
+            ctx.stroke();
+          }
+
+          // Add hover event
+          canvas.addEventListener("mousemove", (event) => {
+            const rect = canvas.getBoundingClientRect();
+            const mouseX = event.clientX - rect.left;
+            const mouseY = event.clientY - rect.top;
+
+            if (
+              mouseX >= x &&
+              mouseX <= x + boxWidth &&
+              mouseY >= y &&
+              mouseY <= y + boxHeight
+            ) {
+              document.getElementById("sectionContent").innerHTML = `
+                            <h3>${section.title}</h3>
+                            <p>${section.content}</p>
+                            <p>Sentiment: ${section.sentiment}</p>
+                        `;
+            }
+          });
+        });
+      }
+
+      function getSentimentColor(sentiment) {
+        if (sentiment > 0)
+          return `rgba(0, 255, 0, ${Math.min(sentiment * 0.1, 1)})`;
+        if (sentiment < 0)
+          return `rgba(255, 0, 0, ${Math.min(Math.abs(sentiment) * 0.1, 1)})`;
+        return "rgba(255, 255, 0, 0.1)";
+      }
+
+      function generateKeywordCloud(sections) {
+        const cloudContainer = document.getElementById("keywordCloud");
+        cloudContainer.innerHTML = "";
+
+        const allKeywords = {};
+        sections.forEach((section) => {
+          Object.keys(section.keywords).forEach((keyword) => {
+            allKeywords[keyword] =
+              (allKeywords[keyword] || 0) + section.keywords[keyword];
+          });
+        });
+
+        const sortedKeywords = Object.keys(allKeywords).sort(
+          (a, b) => allKeywords[b] - allKeywords[a]
+        );
+        const topKeywords = sortedKeywords.slice(0, 20);
+
+        topKeywords.forEach((keyword) => {
+          const span = document.createElement("span");
+          span.textContent = keyword;
+          span.style.fontSize = `${Math.max(
+            12,
+            Math.min(36, allKeywords[keyword] * 5)
+          )}px`;
+          span.style.margin = "5px";
+          span.style.cursor = "pointer";
+          span.onclick = () => highlightKeyword(keyword);
+          cloudContainer.appendChild(span);
+        });
+      }
+
+      function highlightKeyword(keyword) {
+        const sectionContent = document.getElementById("sectionContent");
+        const regex = new RegExp(`\\b${keyword}\\b`, "gi");
+        sectionContent.innerHTML = sectionContent.innerHTML.replace(
+          regex,
+          (match) => `<mark>${match}</mark>`
+        );
+      }
+    </script>
+  </body>
+</html>

@@ -1,0 +1,138 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Article Visualizer</title>
+    <style>
+      body {
+        font-family: Arial, sans-serif;
+        margin: 0;
+        padding: 10px;
+        background: #f4f4f4;
+      }
+      textarea {
+        width: 100%;
+        height: 200px;
+        margin-bottom: 10px;
+      }
+      #visualization {
+        width: 100%;
+        height: 500px;
+        background: white;
+        margin-top: 10px;
+      }
+      .node {
+        stroke: #000;
+        stroke-width: 1.5px;
+      }
+      .link {
+        fill: none;
+        stroke: #ccc;
+        stroke-width: 1.5px;
+      }
+      .text-preview {
+        position: fixed;
+        background: white;
+        border: 1px solid #ccc;
+        padding: 5px;
+        display: none;
+      }
+    </style>
+  </head>
+  <body>
+    <textarea
+      id="articleInput"
+      placeholder="Enter your article here..."
+    ></textarea>
+    <button onclick="analyzeAndVisualize()">Visualize</button>
+    <div id="visualization"></div>
+    <div id="textPreview" class="text-preview"></div>
+
+    <script>
+      function analyzeAndVisualize() {
+        const text = document.getElementById("articleInput").value;
+        const sections = text.split("\n\n").map((section, index) => ({
+          id: index,
+          content: section,
+          sentiment: analyzeSentiment(section),
+          keywords: extractKeywords(section),
+        }));
+
+        drawVisualization(sections);
+      }
+
+      function analyzeSentiment(text) {
+        const positiveWords = ["good", "great", "excellent", "positive"];
+        const negativeWords = ["bad", "terrible", "poor", "negative"];
+        let sentimentScore = 0;
+        positiveWords.forEach(
+          (word) =>
+            (sentimentScore += (text.match(new RegExp(word, "gi")) || [])
+              .length)
+        );
+        negativeWords.forEach(
+          (word) =>
+            (sentimentScore -= (text.match(new RegExp(word, "gi")) || [])
+              .length)
+        );
+        return sentimentScore;
+      }
+
+      function extractKeywords(text) {
+        return text.match(/\b\w{4,}\b/g).reduce((acc, word) => {
+          acc[word] = (acc[word] || 0) + 1;
+          return acc;
+        }, {});
+      }
+
+      function drawVisualization(sections) {
+        const canvas = document.getElementById("visualization");
+        const ctx = canvas.getContext("2d");
+        const width = canvas.width;
+        const height = canvas.height;
+
+        // Clear canvas
+        ctx.clearRect(0, 0, width, height);
+
+        // Simple tree layout
+        const ySpacing = 100;
+        const xSpacing = width / (sections.length + 1);
+        sections.forEach((section, i) => {
+          ctx.beginPath();
+          ctx.arc(xSpacing * (i + 1), ySpacing * (i + 1), 30, 0, 2 * Math.PI);
+          ctx.fillStyle =
+            section.sentiment > 0
+              ? "green"
+              : section.sentiment < 0
+              ? "red"
+              : "grey";
+          ctx.fill();
+          ctx.stroke();
+          ctx.fillStyle = "black";
+          ctx.font = "12px Arial";
+          ctx.textAlign = "center";
+          ctx.fillText(`S${i + 1}`, xSpacing * (i + 1), ySpacing * (i + 1) + 4);
+
+          // Hover effect
+          canvas.onmousemove = function (e) {
+            const rect = canvas.getBoundingClientRect();
+            const x = e.clientX - rect.left;
+            const y = e.clientY - rect.top;
+            if (
+              Math.hypot(x - xSpacing * (i + 1), y - ySpacing * (i + 1)) <= 30
+            ) {
+              document.getElementById("textPreview").style.display = "block";
+              document.getElementById("textPreview").style.left = `${x}px`;
+              document.getElementById("textPreview").style.top = `${y}px`;
+              document.getElementById("textPreview").innerText =
+                section.content;
+            } else {
+              document.getElementById("textPreview").style.display = "none";
+            }
+          };
+        });
+      }
+    </script>
+  </body>
+</html>

@@ -1,0 +1,143 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>User Activity Visualizer</title>
+    <style>
+      body {
+        font-family: Arial, sans-serif;
+        margin: 0;
+        padding: 10px;
+        background: #f4f4f4;
+      }
+      canvas {
+        background: white;
+        border: 1px solid #ddd;
+        max-width: 100%;
+        height: auto;
+      }
+      #heatmap {
+        position: relative;
+      }
+      .tooltip {
+        position: absolute;
+        background: rgba(0, 0, 0, 0.7);
+        color: white;
+        padding: 5px;
+        border-radius: 3px;
+        visibility: hidden;
+      }
+    </style>
+  </head>
+  <body>
+    <div id="heatmap" style="width: 100%; height: 300px">
+      <canvas id="activityChart" width="600" height="300"></canvas>
+      <div class="tooltip" id="tooltip"></div>
+    </div>
+    <script>
+      document.addEventListener("DOMContentLoaded", function () {
+        const canvas = document.getElementById("activityChart");
+        const ctx = canvas.getContext("2d");
+        const tooltip = document.getElementById("tooltip");
+        const heatmap = document.getElementById("heatmap");
+        let data = [];
+        let heatmapData = {};
+
+        // Simulate data for demonstration
+        for (let i = 0; i < 60; i++) {
+          data.push({
+            time: i,
+            visits: Math.floor(Math.random() * 100),
+            clicks: Math.floor(Math.random() * 50),
+            interactions: Math.floor(Math.random() * 30),
+          });
+        }
+
+        // Function to draw the line chart
+        function drawChart() {
+          ctx.clearRect(0, 0, canvas.width, canvas.height);
+          const maxY = Math.max(
+            ...data.map((d) => d.visits + d.clicks + d.interactions)
+          );
+
+          // Draw axes
+          ctx.beginPath();
+          ctx.moveTo(50, 0);
+          ctx.lineTo(50, canvas.height - 50);
+          ctx.lineTo(canvas.width, canvas.height - 50);
+          ctx.stroke();
+
+          // Plot data
+          ["visits", "clicks", "interactions"].forEach((type, index) => {
+            ctx.beginPath();
+            ctx.strokeStyle = ["blue", "red", "green"][index];
+            data.forEach((d, i) => {
+              let y =
+                canvas.height - 50 - (d[type] / maxY) * (canvas.height - 100);
+              let x = (i / (data.length - 1)) * (canvas.width - 50) + 50;
+              if (i === 0) ctx.moveTo(x, y);
+              else ctx.lineTo(x, y);
+            });
+            ctx.stroke();
+          });
+        }
+
+        // Function to update tooltip
+        function updateTooltip(e) {
+          const rect = canvas.getBoundingClientRect();
+          const x = e.clientX - rect.left;
+          const y = e.clientY - rect.top;
+          const index = Math.floor(
+            ((x - 50) / (canvas.width - 50)) * data.length
+          );
+          if (index >= 0 && index < data.length) {
+            const d = data[index];
+            tooltip.style.left = `${e.clientX}px`;
+            tooltip.style.top = `${e.clientY}px`;
+            tooltip.innerHTML = `Time: ${d.time}m<br>Visits: ${d.visits}<br>Clicks: ${d.clicks}<br>Interactions: ${d.interactions}`;
+            tooltip.style.visibility = "visible";
+          } else {
+            tooltip.style.visibility = "hidden";
+          }
+        }
+
+        // Heatmap simulation (simplified)
+        function updateHeatmap() {
+          for (let el in heatmapData) {
+            const element = document.querySelector(el);
+            if (element) {
+              const rect = element.getBoundingClientRect();
+              const heat = document.createElement("div");
+              heat.style.cssText = `position:absolute;background:red;opacity:${
+                (heatmapData[el] / Math.max(...Object.values(heatmapData))) *
+                  0.5 +
+                0.1
+              };width:${rect.width}px;height:${rect.height}px;left:${
+                rect.left
+              }px;top:${rect.top}px;`;
+              heatmap.appendChild(heat);
+            }
+          }
+        }
+
+        // Event listeners
+        canvas.addEventListener("mousemove", updateTooltip);
+        canvas.addEventListener(
+          "mouseout",
+          () => (tooltip.style.visibility = "hidden")
+        );
+
+        // Simulate heatmap data
+        ["button", "a"].forEach((tag) => {
+          document.querySelectorAll(tag).forEach((el, idx) => {
+            heatmapData[`${tag}:nth-child(${idx + 1})`] = Math.random();
+          });
+        });
+
+        drawChart();
+        updateHeatmap();
+      });
+    </script>
+  </body>
+</html>

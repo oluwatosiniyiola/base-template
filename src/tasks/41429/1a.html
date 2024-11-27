@@ -1,0 +1,173 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Sentiment and Keyword Analyzer</title>
+    <style>
+      body {
+        font-family: Arial, sans-serif;
+        margin: 0;
+        padding: 10px;
+        background: #f4f4f4;
+      }
+      textarea,
+      canvas,
+      div {
+        width: 100%;
+        box-sizing: border-box;
+        margin-bottom: 10px;
+      }
+      canvas {
+        background: white;
+        border: 1px solid #ddd;
+      }
+      .graph-label {
+        text-align: center;
+        font-size: 12px;
+      }
+      .keyword-bar {
+        fill: #3498db;
+      }
+      .positive {
+        color: green;
+      }
+      .negative {
+        color: red;
+      }
+      .neutral {
+        color: grey;
+      }
+    </style>
+  </head>
+  <body>
+    <textarea
+      id="articleInput"
+      rows="10"
+      placeholder="Enter your article here..."
+    ></textarea>
+    <button onclick="analyzeArticle()">Analyze</button>
+
+    <div id="sentimentGraph" class="graph-label">Sentiment Evolution</div>
+    <canvas id="sentimentCanvas" height="200"></canvas>
+
+    <div id="keywordGraph" class="graph-label">Keyword Frequency</div>
+    <canvas id="keywordCanvas" height="200"></canvas>
+
+    <div id="keywordSentimentMatrix"></div>
+
+    <script>
+      const sentimentDict = {
+        good: 1,
+        great: 1,
+        bad: -1,
+        terrible: -1,
+        neutral: 0,
+        okay: 0,
+      };
+
+      function analyzeArticle() {
+        const text = document.getElementById("articleInput").value;
+        const sentences = text.match(/[^.!?]+[.!?]+/g) || [text];
+        const words = text
+          .toLowerCase()
+          .replace(/[^\w\s]/g, "")
+          .split(/\s+/);
+        const keywords = words.filter(
+          (word) =>
+            ![
+              "the",
+              "a",
+              "an",
+              "in",
+              "on",
+              "at",
+              "to",
+              "for",
+              "of",
+              "and",
+              "is",
+              "are",
+            ].includes(word)
+        );
+
+        // Sentiment Analysis
+        const sentiments = sentences.map((sentence) => {
+          const wordsInSentence = sentence.toLowerCase().split(" ");
+          return wordsInSentence.reduce(
+            (acc, word) => acc + (sentimentDict[word] || 0),
+            0
+          );
+        });
+
+        drawSentimentGraph(sentiments);
+        drawKeywordFrequency(keywords);
+        // Placeholder for matrix - this would need more complex implementation
+        document.getElementById("keywordSentimentMatrix").innerText =
+          "Keyword Sentiment Matrix would be displayed here.";
+      }
+
+      function drawSentimentGraph(sentiments) {
+        const canvas = document.getElementById("sentimentCanvas");
+        const ctx = canvas.getContext("2d");
+        const width = canvas.width;
+        const height = canvas.height;
+        ctx.clearRect(0, 0, width, height);
+
+        sentiments.forEach((sent, i) => {
+          const x = (i / sentiments.length) * width;
+          const y = height / 2 - sent * 20; // scaling sentiment
+          ctx.beginPath();
+          ctx.arc(x, y, 2, 0, 2 * Math.PI);
+          ctx.fillStyle = sent > 0 ? "green" : sent < 0 ? "red" : "grey";
+          ctx.fill();
+          if (i > 0) {
+            ctx.moveTo(
+              x - width / sentiments.length,
+              sentiments[i - 1] > 0
+                ? y + 20
+                : sentiments[i - 1] < 0
+                ? y - 20
+                : y
+            );
+            ctx.lineTo(x, y);
+          }
+        });
+        ctx.stroke();
+      }
+
+      function drawKeywordFrequency(words) {
+        const counts = {};
+        words.forEach((word) => (counts[word] = (counts[word] || 0) + 1));
+        const sortedKeywords = Object.keys(counts)
+          .sort((a, b) => counts[b] - counts[a])
+          .slice(0, 10);
+
+        const canvas = document.getElementById("keywordCanvas");
+        const ctx = canvas.getContext("2d");
+        const barWidth = canvas.width / sortedKeywords.length;
+        const maxCount = Math.max(...sortedKeywords.map((k) => counts[k]));
+
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        sortedKeywords.forEach((word, index) => {
+          const barHeight = (counts[word] / maxCount) * canvas.height;
+          ctx.fillStyle = "#3498db";
+          ctx.fillRect(
+            index * barWidth,
+            canvas.height - barHeight,
+            barWidth - 5,
+            barHeight
+          );
+          ctx.save();
+          ctx.translate(
+            index * barWidth + barWidth / 2,
+            canvas.height - barHeight - 10
+          );
+          ctx.rotate(-Math.PI / 2);
+          ctx.fillText(word, 0, 0);
+          ctx.restore();
+        });
+      }
+    </script>
+  </body>
+</html>

@@ -1,0 +1,203 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Sentiment and Keyword Analyzer</title>
+    <style>
+      body {
+        font-family: Arial, sans-serif;
+        margin: 0;
+        padding: 10px;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+      }
+      textarea {
+        width: 90%;
+        height: 150px;
+        margin-bottom: 10px;
+      }
+      canvas {
+        width: 100%;
+        height: 200px;
+        margin: 10px 0;
+      }
+      #keywordDetails {
+        display: none;
+        background: #f0f0f0;
+        padding: 10px;
+        margin: 10px 0;
+        border-radius: 5px;
+        width: 90%;
+      }
+      .tooltip {
+        position: absolute;
+        background-color: rgba(0, 0, 0, 0.7);
+        color: white;
+        padding: 5px;
+        border-radius: 5px;
+        display: none;
+      }
+    </style>
+  </head>
+  <body>
+    <h1>Sentiment and Keyword Analyzer</h1>
+    <textarea
+      id="articleInput"
+      placeholder="Paste your article here..."
+    ></textarea>
+    <button id="analyzeBtn">Analyze</button>
+    <canvas id="sentimentChart"></canvas>
+    <canvas id="keywordChart"></canvas>
+    <div id="keywordDetails"></div>
+    <div class="tooltip" id="tooltip"></div>
+
+    <script>
+      // Predefined sentiment dictionary
+      const sentimentDict = {
+        positive: [
+          "good",
+          "great",
+          "excellent",
+          "happy",
+          "love",
+          "success",
+          "joy",
+          "wonderful",
+        ],
+        negative: ["bad", "sad", "terrible", "hate", "fail", "anger", "awful"],
+      };
+
+      const stopwords = [
+        "the",
+        "is",
+        "and",
+        "of",
+        "to",
+        "a",
+        "in",
+        "that",
+        "it",
+        "on",
+        "for",
+        "as",
+        "with",
+        "at",
+        "by",
+      ];
+
+      // Helper functions
+      const cleanText = (text) =>
+        text
+          .toLowerCase()
+          .replace(/[^a-z\s]/g, "")
+          .split(/\s+/);
+      const isStopword = (word) => stopwords.includes(word);
+
+      const classifySentiment = (sentence) => {
+        const words = cleanText(sentence);
+        let score = 0;
+        words.forEach((word) => {
+          if (sentimentDict.positive.includes(word)) score++;
+          if (sentimentDict.negative.includes(word)) score--;
+        });
+        return score > 0 ? "positive" : score < 0 ? "negative" : "neutral";
+      };
+
+      const extractKeywords = (text) => {
+        const words = cleanText(text);
+        return words.filter((word) => !isStopword(word));
+      };
+
+      // Main functionality
+      document.getElementById("analyzeBtn").addEventListener("click", () => {
+        const article = document.getElementById("articleInput").value;
+        const sentences = article.split(/(?<=[.?!])\s+/);
+        const keywords = extractKeywords(article);
+        const keywordFrequency = {};
+        const sentimentData = [];
+
+        // Analyze keywords and sentiment
+        sentences.forEach((sentence, index) => {
+          const sentiment = classifySentiment(sentence);
+          sentimentData.push({ index, sentiment });
+
+          cleanText(sentence).forEach((word) => {
+            if (!isStopword(word)) {
+              keywordFrequency[word] = (keywordFrequency[word] || 0) + 1;
+            }
+          });
+        });
+
+        drawSentimentChart(sentimentData);
+        drawKeywordChart(keywordFrequency, sentences);
+      });
+
+      // Visualization: Sentiment Chart
+      const drawSentimentChart = (sentimentData) => {
+        const canvas = document.getElementById("sentimentChart");
+        const ctx = canvas.getContext("2d");
+        canvas.width = window.innerWidth - 20;
+        canvas.height = 200;
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+        const width = canvas.width / sentimentData.length;
+        sentimentData.forEach((data, index) => {
+          const x = index * width;
+          const y = canvas.height / 2;
+          const color =
+            data.sentiment === "positive"
+              ? "green"
+              : data.sentiment === "negative"
+              ? "red"
+              : "gray";
+          ctx.fillStyle = color;
+          ctx.fillRect(x, y - 10, width - 2, 20);
+        });
+      };
+
+      // Visualization: Keyword Frequency Bar Chart
+      const drawKeywordChart = (keywordFrequency, sentences) => {
+        const canvas = document.getElementById("keywordChart");
+        const ctx = canvas.getContext("2d");
+        canvas.width = window.innerWidth - 20;
+        canvas.height = 200;
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+        const keywords = Object.keys(keywordFrequency).slice(0, 10);
+        const maxFrequency = Math.max(...Object.values(keywordFrequency));
+
+        const barWidth = canvas.width / keywords.length;
+        keywords.forEach((keyword, index) => {
+          const barHeight =
+            (keywordFrequency[keyword] / maxFrequency) * canvas.height;
+          const x = index * barWidth;
+          const y = canvas.height - barHeight;
+
+          ctx.fillStyle = "blue";
+          ctx.fillRect(x, y, barWidth - 5, barHeight);
+
+          ctx.fillStyle = "black";
+          ctx.fillText(keyword, x + 5, canvas.height - 5);
+        });
+
+        canvas.addEventListener("click", (event) => {
+          const x = event.offsetX;
+          const keywordIndex = Math.floor(x / barWidth);
+          const selectedKeyword = keywords[keywordIndex];
+          const keywordDetails = sentences
+            .filter((sentence) =>
+              sentence.toLowerCase().includes(selectedKeyword)
+            )
+            .map((sentence) => `<p>${sentence}</p>`)
+            .join("");
+          document.getElementById(
+            "keywordDetails"
+          ).innerHTML = `<h3>${selectedKeyword}</h3>${keywordDetails}`;
+          document.getElementById("keywordDetails").style.display = "block";
+        });
+      };
+    </script>
+  </body>
+</html>

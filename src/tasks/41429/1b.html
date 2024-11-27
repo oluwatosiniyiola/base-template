@@ -1,0 +1,251 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Article Sentiment and Keyword Analyzer</title>
+    <style>
+      body {
+        font-family: Arial, sans-serif;
+        margin: 0;
+        padding: 20px;
+        max-width: 800px;
+        margin: 0 auto;
+      }
+      textarea {
+        width: 100%;
+        height: 200px;
+        margin-bottom: 20px;
+      }
+      button {
+        display: block;
+        margin-bottom: 20px;
+      }
+      canvas {
+        width: 100%;
+        max-width: 600px;
+        height: 300px;
+        margin-bottom: 20px;
+      }
+      #keywordMatrix {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
+        gap: 10px;
+        margin-bottom: 20px;
+      }
+      .keyword-cell {
+        padding: 5px;
+        text-align: center;
+        border: 1px solid #ccc;
+      }
+      #highlightedText {
+        margin-top: 20px;
+        padding: 10px;
+        border: 1px solid #ccc;
+        background-color: #f9f9f9;
+      }
+    </style>
+  </head>
+  <body>
+    <h1>Article Sentiment and Keyword Analyzer</h1>
+    <textarea
+      id="articleInput"
+      placeholder="Paste your article here..."
+    ></textarea>
+    <button onclick="analyzeArticle()">Analyze</button>
+    <canvas id="sentimentGraph"></canvas>
+    <canvas id="keywordChart"></canvas>
+    <div id="keywordMatrix"></div>
+    <div id="highlightedText"></div>
+
+    <script>
+      const stopwords = new Set([
+        "a",
+        "an",
+        "and",
+        "are",
+        "as",
+        "at",
+        "be",
+        "by",
+        "for",
+        "from",
+        "has",
+        "he",
+        "in",
+        "is",
+        "it",
+        "its",
+        "of",
+        "on",
+        "that",
+        "the",
+        "to",
+        "was",
+        "were",
+        "will",
+        "with",
+      ]);
+      const sentimentDictionary = {
+        good: 1,
+        great: 2,
+        excellent: 2,
+        bad: -1,
+        terrible: -2,
+        awful: -2,
+        happy: 1,
+        sad: -1,
+        angry: -2,
+        joyful: 2,
+        depressed: -2,
+        excited: 2,
+        love: 2,
+        hate: -2,
+        like: 1,
+        dislike: -1,
+        amazing: 2,
+        horrible: -2,
+      };
+
+      function analyzeArticle() {
+        const article = document.getElementById("articleInput").value;
+        const sentences = article
+          .split(/[.!?]+/)
+          .filter((s) => s.trim().length > 0);
+        const keywords = extractKeywords(article);
+        const sentiments = analyzeSentiment(sentences);
+
+        drawSentimentGraph(sentiments);
+        drawKeywordChart(keywords);
+        createKeywordMatrix(keywords, sentences);
+      }
+
+      function extractKeywords(text) {
+        const words = text.toLowerCase().match(/\b\w+\b/g);
+        const keywordCount = {};
+        words.forEach((word) => {
+          if (!stopwords.has(word)) {
+            keywordCount[word] = (keywordCount[word] || 0) + 1;
+          }
+        });
+        return Object.entries(keywordCount)
+          .sort((a, b) => b[1] - a[1])
+          .slice(0, 10);
+      }
+
+      function analyzeSentiment(sentences) {
+        return sentences.map((sentence) => {
+          const words = sentence.toLowerCase().match(/\b\w+\b/g) || [];
+          let sentimentScore = 0;
+          words.forEach((word) => {
+            if (sentimentDictionary.hasOwnProperty(word)) {
+              sentimentScore += sentimentDictionary[word];
+            }
+          });
+          return sentimentScore;
+        });
+      }
+
+      function drawSentimentGraph(sentiments) {
+        const canvas = document.getElementById("sentimentGraph");
+        const ctx = canvas.getContext("2d");
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+        const maxSentiment = Math.max(...sentiments.map(Math.abs));
+        const scaleY = canvas.height / (2 * maxSentiment);
+        const scaleX = canvas.width / (sentiments.length - 1);
+
+        ctx.beginPath();
+        ctx.moveTo(0, canvas.height / 2);
+        sentiments.forEach((sentiment, index) => {
+          const x = index * scaleX;
+          const y = canvas.height / 2 - sentiment * scaleY;
+          ctx.lineTo(x, y);
+        });
+        ctx.stroke();
+
+        canvas.onclick = function (event) {
+          const rect = canvas.getBoundingClientRect();
+          const x = event.clientX - rect.left;
+          const index = Math.floor(x / scaleX);
+          highlightSentence(index);
+        };
+      }
+
+      function drawKeywordChart(keywords) {
+        const canvas = document.getElementById("keywordChart");
+        const ctx = canvas.getContext("2d");
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+        const maxCount = Math.max(...keywords.map((k) => k[1]));
+        const barWidth = canvas.width / keywords.length;
+        const scaleY = canvas.height / maxCount;
+
+        keywords.forEach((keyword, index) => {
+          const [word, count] = keyword;
+          const x = index * barWidth;
+          const y = canvas.height - count * scaleY;
+          ctx.fillRect(x, y, barWidth - 2, count * scaleY);
+          ctx.fillText(word, x, canvas.height - 5);
+        });
+
+        canvas.onclick = function (event) {
+          const rect = canvas.getBoundingClientRect();
+          const x = event.clientX - rect.left;
+          const index = Math.floor(x / barWidth);
+          highlightKeyword(keywords[index][0]);
+        };
+      }
+
+      function createKeywordMatrix(keywords, sentences) {
+        const matrix = document.getElementById("keywordMatrix");
+        matrix.innerHTML = "";
+
+        keywords.forEach(([keyword, _]) => {
+          const cell = document.createElement("div");
+          cell.className = "keyword-cell";
+          cell.textContent = keyword;
+          cell.style.backgroundColor = getKeywordColor(keyword, sentences);
+          matrix.appendChild(cell);
+        });
+      }
+
+      function getKeywordColor(keyword, sentences) {
+        let totalSentiment = 0;
+        let count = 0;
+        sentences.forEach((sentence) => {
+          if (sentence.toLowerCase().includes(keyword)) {
+            totalSentiment += analyzeSentiment([sentence])[0];
+            count++;
+          }
+        });
+        const avgSentiment = count > 0 ? totalSentiment / count : 0;
+        const hue = (avgSentiment + 2) * 60; // Map -2 to 2 to 0 to 240 (hue)
+        return `hsl(${hue}, 70%, 70%)`;
+      }
+
+      function highlightSentence(index) {
+        const article = document.getElementById("articleInput").value;
+        const sentences = article
+          .split(/[.!?]+/)
+          .filter((s) => s.trim().length > 0);
+        const highlightedText = document.getElementById("highlightedText");
+        highlightedText.innerHTML = sentences
+          .map((sentence, i) =>
+            i === index ? `<strong>${sentence}</strong>` : sentence
+          )
+          .join(". ");
+      }
+
+      function highlightKeyword(keyword) {
+        const article = document.getElementById("articleInput").value;
+        const highlightedText = document.getElementById("highlightedText");
+        const regex = new RegExp(`\\b${keyword}\\b`, "gi");
+        highlightedText.innerHTML = article.replace(
+          regex,
+          "<strong>$&</strong>"
+        );
+      }
+    </script>
+  </body>
+</html>

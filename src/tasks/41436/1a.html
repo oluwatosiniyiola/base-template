@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Article Comparison Tool</title>
+    <style>
+      body {
+        font-family: Arial, sans-serif;
+        margin: 0;
+        padding: 10px;
+        background: #f4f4f4;
+      }
+      textarea {
+        width: 100%;
+        height: 150px;
+        margin-bottom: 10px;
+      }
+      button {
+        width: 100%;
+        padding: 10px;
+        margin-bottom: 10px;
+      }
+      .chart-container {
+        position: relative;
+        width: 100%;
+        height: 300px;
+      }
+      canvas {
+        background: white;
+      }
+    </style>
+  </head>
+  <body>
+    <textarea id="article1" placeholder="Enter Article 1"></textarea>
+    <textarea id="article2" placeholder="Enter Article 2"></textarea>
+    <button onclick="analyzeArticles()">Compare Articles</button>
+
+    <div class="chart-container">
+      <canvas id="radarChart"></canvas>
+    </div>
+    <div class="chart-container">
+      <canvas id="keywordChart"></canvas>
+    </div>
+    <div class="chart-container">
+      <canvas id="sentimentChart"></canvas>
+    </div>
+
+    <script>
+      function analyzeArticles() {
+        const text1 = document.getElementById("article1").value;
+        const text2 = document.getElementById("article2").value;
+
+        // Simplified functions for demonstration
+        const topics1 = extractTopics(text1);
+        const topics2 = extractTopics(text2);
+        const keywords1 = getKeywords(text1);
+        const keywords2 = getKeywords(text2);
+        const sentiment1 = analyzeSentiment(text1);
+        const sentiment2 = analyzeSentiment(text2);
+
+        drawRadarChart(topics1, topics2);
+        drawKeywordChart(keywords1, keywords2);
+        drawSentimentChart(sentiment1, sentiment2);
+      }
+
+      function extractTopics(text) {
+        // Placeholder for topic extraction logic
+        return ["Tech", "Health", "Politics"];
+      }
+
+      function getKeywords(text) {
+        // Simple keyword extraction excluding stopwords
+        const stopwords = new Set(["the", "and", "is", "in", "to", "a"]);
+        let words = text.toLowerCase().match(/\b\w+\b/g) || [];
+        return words
+          .filter((word) => !stopwords.has(word))
+          .reduce((acc, word) => {
+            acc[word] = (acc[word] || 0) + 1;
+            return acc;
+          }, {});
+      }
+
+      function analyzeSentiment(text) {
+        // Placeholder for sentiment analysis
+        return Math.random() > 0.5 ? "Positive" : "Negative";
+      }
+
+      function drawRadarChart(topics1, topics2) {
+        const ctx = document.getElementById("radarChart").getContext("2d");
+        // Radar chart logic would go here, simplified for brevity
+        ctx.font = "15px Arial";
+        ctx.fillText("Radar Chart Placeholder", 10, 50);
+      }
+
+      function drawKeywordChart(keywords1, keywords2) {
+        const ctx = document.getElementById("keywordChart").getContext("2d");
+        // Bar chart logic would go here
+        ctx.fillText("Keyword Chart Placeholder", 10, 50);
+      }
+
+      function drawSentimentChart(sentiment1, sentiment2) {
+        const ctx = document.getElementById("sentimentChart").getContext("2d");
+        ctx.fillText(
+          `Article 1: ${sentiment1}, Article 2: ${sentiment2}`,
+          10,
+          50
+        );
+      }
+    </script>
+  </body>
+</html>

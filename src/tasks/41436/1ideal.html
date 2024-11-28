@@ -1,0 +1,262 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Article Comparison Tool</title>
+    <style>
+      body {
+        font-family: Arial, sans-serif;
+        margin: 20px auto;
+        padding: 20px;
+        max-width: 600px;
+        background-color: #f9f9f9;
+      }
+      h1 {
+        text-align: center;
+      }
+      textarea {
+        width: 100%;
+        height: 150px;
+        margin-bottom: 10px;
+        padding: 10px;
+        border: 1px solid #ccc;
+        border-radius: 4px;
+        font-size: 16px;
+      }
+      button {
+        display: block;
+        width: 100%;
+        padding: 10px;
+        font-size: 16px;
+        background-color: #007bff;
+        color: #fff;
+        border: none;
+        border-radius: 4px;
+        cursor: pointer;
+      }
+      button:hover {
+        background-color: #0056b3;
+      }
+      #results {
+        margin-top: 20px;
+      }
+      canvas {
+        display: block;
+        width: 100%;
+        max-width: 400px;
+        margin: 20px auto;
+      }
+    </style>
+  </head>
+  <body>
+    <h1>Article Comparison Tool</h1>
+    <textarea id="article1" placeholder="Paste article 1 here"></textarea>
+    <textarea id="article2" placeholder="Paste article 2 here"></textarea>
+    <button onclick="compareArticles()">Compare Articles</button>
+    <div id="results">
+      <canvas id="topicChart"></canvas>
+      <canvas id="keywordChart"></canvas>
+      <canvas id="sentimentChart"></canvas>
+    </div>
+
+    <script>
+      // Predefined stopwords to exclude from analysis
+      const stopwords = new Set([
+        "a",
+        "an",
+        "and",
+        "are",
+        "as",
+        "at",
+        "be",
+        "by",
+        "for",
+        "from",
+        "has",
+        "he",
+        "in",
+        "is",
+        "it",
+        "its",
+        "of",
+        "on",
+        "that",
+        "the",
+        "to",
+        "was",
+        "were",
+        "will",
+        "with",
+      ]);
+
+      // Extracts keywords from the text, removing stopwords
+      function extractKeywords(text) {
+        return (
+          text.toLowerCase().match(/\b\w+\b/g) ||
+          [].filter((word) => !stopwords.has(word))
+        );
+      }
+
+      // Performs a simple sentiment analysis
+      function analyzeSentiment(text) {
+        const positiveWords = new Set([
+          "good",
+          "great",
+          "excellent",
+          "positive",
+          "happy",
+          "wonderful",
+        ]);
+        const negativeWords = new Set([
+          "bad",
+          "terrible",
+          "negative",
+          "sad",
+          "awful",
+          "poor",
+        ]);
+
+        let score = 0;
+        extractKeywords(text).forEach((word) => {
+          if (positiveWords.has(word)) score++;
+          if (negativeWords.has(word)) score--;
+        });
+
+        return score > 0 ? "positive" : score < 0 ? "negative" : "neutral";
+      }
+
+      // Main function to compare articles and generate visualizations
+      function compareArticles() {
+        const article1 = document.getElementById("article1").value;
+        const article2 = document.getElementById("article2").value;
+
+        const keywords1 = extractKeywords(article1);
+        const keywords2 = extractKeywords(article2);
+
+        const topics = [...new Set([...keywords1, ...keywords2])].slice(0, 5);
+
+        const sentiment1 = analyzeSentiment(article1);
+        const sentiment2 = analyzeSentiment(article2);
+
+        drawTopicChart(topics, keywords1, keywords2);
+        drawKeywordChart(keywords1, keywords2);
+        drawSentimentChart(sentiment1, sentiment2);
+      }
+
+      // Draws a radar chart to compare topics
+      function drawTopicChart(topics, keywords1, keywords2) {
+        const canvas = document.getElementById("topicChart");
+        const ctx = canvas.getContext("2d");
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+        const centerX = canvas.width / 2;
+        const centerY = canvas.height / 2;
+        const radius = Math.min(centerX, centerY) - 10;
+
+        topics.forEach((topic, i) => {
+          const angle = (i / topics.length) * 2 * Math.PI;
+          const x = centerX + radius * Math.cos(angle);
+          const y = centerY + radius * Math.sin(angle);
+
+          // Draw axis lines and labels
+          ctx.beginPath();
+          ctx.moveTo(centerX, centerY);
+          ctx.lineTo(x, y);
+          ctx.stroke();
+          ctx.fillText(topic, x, y);
+
+          // Draw points for article 1
+          const count1 = keywords1.filter((k) => k === topic).length;
+          ctx.fillStyle = "blue";
+          ctx.beginPath();
+          ctx.arc(
+            centerX + (count1 / 10) * radius * Math.cos(angle),
+            centerY + (count1 / 10) * radius * Math.sin(angle),
+            3,
+            0,
+            2 * Math.PI
+          );
+          ctx.fill();
+
+          // Draw points for article 2
+          const count2 = keywords2.filter((k) => k === topic).length;
+          ctx.fillStyle = "red";
+          ctx.beginPath();
+          ctx.arc(
+            centerX + (count2 / 10) * radius * Math.cos(angle),
+            centerY + (count2 / 10) * radius * Math.sin(angle),
+            3,
+            0,
+            2 * Math.PI
+          );
+          ctx.fill();
+        });
+      }
+
+      // Draws a bar chart to compare keyword frequencies
+      function drawKeywordChart(keywords1, keywords2) {
+        const canvas = document.getElementById("keywordChart");
+        const ctx = canvas.getContext("2d");
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+        const allKeywords = [...new Set([...keywords1, ...keywords2])].slice(
+          0,
+          10
+        );
+        const barHeight = canvas.height / allKeywords.length;
+
+        allKeywords.forEach((keyword, i) => {
+          const count1 = keywords1.filter((k) => k === keyword).length;
+          const count2 = keywords2.filter((k) => k === keyword).length;
+
+          // Draw bars for article 1
+          ctx.fillStyle = "blue";
+          ctx.fillRect(0, i * barHeight, count1 * 10, barHeight / 2);
+
+          // Draw bars for article 2
+          ctx.fillStyle = "red";
+          ctx.fillRect(
+            0,
+            i * barHeight + barHeight / 2,
+            count2 * 10,
+            barHeight / 2
+          );
+
+          // Add labels
+          ctx.fillStyle = "black";
+          ctx.fillText(keyword, 5, i * barHeight + barHeight / 2);
+        });
+      }
+
+      // Draws a bar chart for sentiment comparison
+      function drawSentimentChart(sentiment1, sentiment2) {
+        const canvas = document.getElementById("sentimentChart");
+        const ctx = canvas.getContext("2d");
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+        const sentiments = ["positive", "neutral", "negative"];
+        const barWidth = canvas.width / 3;
+
+        sentiments.forEach((sentiment, i) => {
+          // Article 1 sentiment
+          ctx.fillStyle = sentiment === sentiment1 ? "blue" : "lightblue";
+          ctx.fillRect(i * barWidth, canvas.height / 2, barWidth / 2, -50);
+
+          // Article 2 sentiment
+          ctx.fillStyle = sentiment === sentiment2 ? "red" : "pink";
+          ctx.fillRect(
+            i * barWidth + barWidth / 2,
+            canvas.height / 2,
+            barWidth / 2,
+            -50
+          );
+
+          // Add labels
+          ctx.fillStyle = "black";
+          ctx.fillText(sentiment, i * barWidth + 10, canvas.height - 10);
+        });
+      }
+    </script>
+  </body>
+</html>
